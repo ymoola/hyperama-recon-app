@@ -8,7 +8,6 @@ import shutil
 import pandas as pd
 import logging
 from io import BytesIO
-from dotenv import load_dotenv
 from PIL import Image
 from pdf2image import convert_from_path
 from openai import OpenAI
