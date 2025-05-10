@@ -1,0 +1,9 @@
+streamlit
+openai
+pandas
+pillow
+python-dotenv
+pdf2image
+google-genai
+openpyxl
+
