@@ -19,6 +19,7 @@ import streamlit as st
 from google import genai
 from google.genai.types import Part
 import ast
+import pathlib
 
 def check_auth():
     if "logged_in" not in st.session_state:
@@ -46,7 +47,23 @@ load_dotenv()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-vendor_categories = os.getenv("VENDOR_CATS")
+vendor_categories = {
+    "SA Imports": ["Rasheeda Industries", "L&K Poly"],
+    "Clearing, FF, Duties, W/housing": ["Shuttle Freight"],
+    "Meat": ["St Helens", "Sargent Farms", "Toronto Halal", "Sysco", "Solmaz", "Bacha Casings", "J&FC Seafood"],
+    "Local Purchases": ["Sysco", "A1", "Bun Man", "Sahel Khan", "Starsky", "Mr Produce", "Walmart", "PIX Graphics", "Kim Eco Pak"],
+    "Utilities": ["Alectra", "Enbridge", "Rogers", "Telus"],
+    "Rent": ["SDEB"],
+    "Repairs & Maintenance": ["MechArm", "IB Technical", "Just instruments", "Willy Oosthuizen", "Skypole"],
+    "Office Expenses": ["Amazon"],
+    "Health & Safety": ["Green Planet", "Abell Pest Control", "Cintas", "CFIA", "HMA", "Waste Connection of Canada", "Aqua Team Power Clean"],
+    "Insurance, Legal, Accounting": ["Des Jardin", "HHAcc Services"],
+    "Bank charges": ["RBC", "Moneris"],
+    "Delivery service": ["Uber Eats", "Door Dash"],
+    "Freight on line shopping": ["Click ship (Freight.com)"],
+    "Vehicle & Fuel": ["Nissan", "Stinton", "Shell"],
+    "Consulting": ["Food safety first"]
+}
 
 receipt_schema = {
     "type": "object",
@@ -63,64 +80,21 @@ receipt_schema = {
 
 
 # ---------- Statement Parsing ----------
-
-def pdf_to_images(pdf_path):
-    return convert_from_path(pdf_path, dpi=200)
-
-def extract_receipt_info_from_image(image):
-    """
-    Extracts text from a receipt image by converting it into bytes and sending
-    it to the Gemini API with a prompt request. The response is the extracted
-    text in a structured Markdown format that is clear, concise, and well-organized.
-
-    Args:
-        image (PIL.Image): The image object of the receipt.
-
-    Returns:
-        str: The extracted text from the receipt in a Markdown format.
-    """ 
-    # Convert PIL image to bytes
-    with BytesIO() as img_bytes_io:
-        image.save(img_bytes_io, format="PNG")
-        img_bytes = img_bytes_io.getvalue()
-
-    # Gemini image + prompt request
-    response = genai_client.models.generate_content(
-        model='gemini-1.5-flash',
-        contents=[
-            Part.from_bytes(data=img_bytes, mime_type="image/png"),
-            """
-            Analyze the text in the provided image. Extract all readable content
-            and present it in a structured Markdown format that is clear, concise, 
-            and well-organized. Use headings, lists, or tables where appropriate.
-            """
-        ]
-    )
-
-    return response.text
-
 def extract_statement(pdf_path):
-    """
-    Extracts text from a PDF file by converting each page into an image and
-    analyzing the text content of each image.
-
-    Args:
-        pdf_path (str): The path to the PDF file to be processed.
-
-    Returns:
-        str: A string containing the extracted text from the PDF, structured in
-        a Markdown format that is clear, concise, and well-organized.
-    """
-
-    final_output = ""
-    images = pdf_to_images(pdf_path)
-
-    for page in images:
-        page_text = extract_receipt_info_from_image(page)
-        final_output += f"\n\n{page_text}"
-
-    return final_output
-
+    filepath = pathlib.Path(pdf_path)
+    prompt =  """Analyze the text in the provided document. Extract all readable content
+            and present it in a structured Markdown format that is clear, concise, 
+            and well-organized. Use headings, lists, or tables where appropriate."""
+    response = genai_client.models.generate_content(
+    model="gemini-2.0-flash",
+    contents=[
+        Part.from_bytes(
+            data=filepath.read_bytes(),
+            mime_type='application/pdf',
+        ),
+        prompt])
+    print(response.text)
+    return response.text
 
 # ---------- OCR & Invoice Extraction ----------
 def pdf_to_base64_images(pdf_path):
@@ -251,7 +225,6 @@ if check_auth():
             try:
                 credit_path = uploaded_pdf_to_tempfile(cc_pdf)
                 cc_md = extract_statement(credit_path)
-                print(cc_md)
                 print("CC statement extracted")
             except Exception as e:
                 st.error(f"Error extracting credit card statement: {e}")
@@ -259,7 +232,6 @@ if check_auth():
             try:
                 bank_md_path = uploaded_pdf_to_tempfile(bank_pdf)
                 bank_md = extract_statement(bank_md_path)
-                print(bank_md)
                 print("Bank statement extracted")
             except Exception as e:
                 st.error(f"Error extracting bank statement: {e}")
