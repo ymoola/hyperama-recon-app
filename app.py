@@ -18,6 +18,28 @@ from openpyxl import load_workbook
 import streamlit as st
 from google import genai
 from google.genai.types import Part
+import ast
+
+def check_auth():
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    if not st.session_state.logged_in:
+        st.subheader("🔒 Login to Access App")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+
+        valid_users = ast.literal_eval(os.getenv("APP_USERS", "{}"))
+
+        if st.button("Login"):
+            if username in valid_users and password == valid_users[username]:
+                st.session_state.logged_in = True
+                st.success("✅ Logged in successfully")
+                st.rerun()
+            else:
+                st.error("❌ Invalid username or password")
+        return False
+    return True
 
 # ---------- Load Keys ----------
 load_dotenv()
@@ -227,83 +249,88 @@ def split_and_export(results, label):
 
 
 # ---------- Streamlit App ----------
-st.set_page_config(page_title="Invoice Reconciler", layout="centered")
-st.title("📑 Invoice Reconciliation App")
+if check_auth():
+    st.set_page_config(page_title="Invoice Reconciler", layout="centered")
+    st.title("📑 Invoice Reconciliation App")
 
-cc_pdf = st.file_uploader("Upload Credit Card Statement (PDF)", type="pdf")
-bank_pdf = st.file_uploader("Upload Bank Statement (PDF)", type="pdf")
-cc_zip = st.file_uploader("Upload Invoices for Credit Card (ZIP)", type="zip")
-bank_zip = st.file_uploader("Upload Invoices for Bank (ZIP)", type="zip")
+    if st.button("Logout"):
+        st.session_state.logged_in = False
+        st.rerun()
 
-if st.button("🔄 Run Reconciliation") and cc_pdf and cc_zip and bank_zip and bank_pdf:
-    print("starting")
-    with st.spinner("🔍 Extracting statements..."):
-        try:
-            credit_path = uploaded_pdf_to_tempfile(cc_pdf)
-            cc_md = extract_statement(credit_path)
-            print(cc_md)
-            print("CC statement extracted")
-        except Exception as e:
-            st.error(f"Error extracting credit card statement: {e}")
-        
-        try:
-            bank_md_path = uploaded_pdf_to_tempfile(bank_pdf)
-            bank_md = extract_statement(bank_md_path)
-            print(bank_md)
-            print("Bank statement extracted")
-        except Exception as e:
-            st.error(f"Error extracting bank statement: {e}")
+    cc_pdf = st.file_uploader("Upload Credit Card Statement (PDF)", type="pdf")
+    bank_pdf = st.file_uploader("Upload Bank Statement (PDF)", type="pdf")
+    cc_zip = st.file_uploader("Upload Invoices for Credit Card (ZIP)", type="zip")
+    bank_zip = st.file_uploader("Upload Invoices for Bank (ZIP)", type="zip")
 
-        
-        
-    cc_folder = unzip_and_process(uploaded_zip_to_tempfile(cc_zip))
-    bank_folder = unzip_and_process(uploaded_zip_to_tempfile(bank_zip))
+    if st.button("🔄 Run Reconciliation") and cc_pdf and cc_zip and bank_zip and bank_pdf:
+        print("starting")
+        with st.spinner("🔍 Extracting statements..."):
+            try:
+                credit_path = uploaded_pdf_to_tempfile(cc_pdf)
+                cc_md = extract_statement(credit_path)
+                print(cc_md)
+                print("CC statement extracted")
+            except Exception as e:
+                st.error(f"Error extracting credit card statement: {e}")
+            
+            try:
+                bank_md_path = uploaded_pdf_to_tempfile(bank_pdf)
+                bank_md = extract_statement(bank_md_path)
+                print(bank_md)
+                print("Bank statement extracted")
+            except Exception as e:
+                st.error(f"Error extracting bank statement: {e}")
 
-    print("checkpoint")
+            
+            
+        cc_folder = unzip_and_process(uploaded_zip_to_tempfile(cc_zip))
+        bank_folder = unzip_and_process(uploaded_zip_to_tempfile(bank_zip))
 
-    print(cc_folder)
-    print(bank_folder)
-    results_cc, results_bank = [], []
+        print("checkpoint")
 
-    if cc_md:
-        with st.spinner("🤖 Processing Credit Card invoices..."):
-            for file in glob.glob(cc_folder + '/*'):
-                for f in glob.glob(file + '/*'):
-                    if f.endswith(".pdf"):
-                        info = extract_invoice_info(f)
-                        reconciled = reconcile_with_statement(info, cc_md)
-                        results_cc.append(json.loads(reconciled))
+        print(cc_folder)
+        print(bank_folder)
+        results_cc, results_bank = [], []
 
-    print(results_cc)
+        if cc_md:
+            with st.spinner("🤖 Processing Credit Card invoices..."):
+                for file in glob.glob(cc_folder + '/*'):
+                    for f in glob.glob(file + '/*'):
+                        if f.endswith(".pdf"):
+                            info = extract_invoice_info(f)
+                            reconciled = reconcile_with_statement(info, cc_md)
+                            results_cc.append(json.loads(reconciled))
 
-    if bank_md:
-        with st.spinner("🤖 Processing Bank invoices..."):
-            for file in glob.glob(bank_folder + '/*'):
-                for f in glob.glob(file + '/*'):
-                    if f.endswith(".pdf"):
-                        info = extract_invoice_info(f)
-                        reconciled = reconcile_with_statement(info, bank_md)
-                        results_bank.append(json.loads(reconciled))
+        print(results_cc)
 
-    print(results_bank)
+        if bank_md:
+            with st.spinner("🤖 Processing Bank invoices..."):
+                for file in glob.glob(bank_folder + '/*'):
+                    for f in glob.glob(file + '/*'):
+                        if f.endswith(".pdf"):
+                            info = extract_invoice_info(f)
+                            reconciled = reconcile_with_statement(info, bank_md)
+                            results_bank.append(json.loads(reconciled))
 
-    cc_path = split_and_export(results_cc, "cc")
-    bank_path = split_and_export(results_bank, "bank")
+        print(results_bank)
 
-    if cc_path:
-        with open(cc_path, "rb") as f:
-            cc_bytes = f.read()
-            st.session_state["cc_bytes"] = cc_bytes
+        cc_path = split_and_export(results_cc, "cc")
+        bank_path = split_and_export(results_bank, "bank")
 
-    if bank_path:
-        with open(bank_path, "rb") as f:
-            bank_bytes = f.read()
-            st.session_state["bank_bytes"] = bank_bytes
-    st.success("✅ Reconciliation complete!")
+        if cc_path:
+            with open(cc_path, "rb") as f:
+                cc_bytes = f.read()
+                st.session_state["cc_bytes"] = cc_bytes
 
-if "cc_bytes" in st.session_state:
-    st.download_button("📥 Download Credit Card Reconciled", st.session_state["cc_bytes"], file_name="cc_reconciled.xlsx")
+        if bank_path:
+            with open(bank_path, "rb") as f:
+                bank_bytes = f.read()
+                st.session_state["bank_bytes"] = bank_bytes
+        st.success("✅ Reconciliation complete!")
 
-if "bank_bytes" in st.session_state:
-    st.download_button("📥 Download Bank Reconciled", st.session_state["bank_bytes"], file_name="bank_reconciled.xlsx")
+    if "cc_bytes" in st.session_state:
+        st.download_button("📥 Download Credit Card Reconciled", st.session_state["cc_bytes"], file_name="cc_reconciled.xlsx")
+
+    if "bank_bytes" in st.session_state:
+        st.download_button("📥 Download Bank Reconciled", st.session_state["bank_bytes"], file_name="bank_reconciled.xlsx")
 
