@@ -30,7 +30,7 @@ def check_auth():
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
 
-        valid_users = ast.literal_eval(os.getenv("APP_USERS", "{}"))
+        valid_users = ast.literal_eval(st.secrets["APP_USERS"])
 
         if st.button("Login"):
             if username in valid_users and password == valid_users[username]:
@@ -43,9 +43,8 @@ def check_auth():
     return True
 
 # ---------- Load Keys ----------
-load_dotenv()
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+openai_client = OpenAI(api_key= st.secrets["OPENAI_API_KEY"])
+genai_client = genai.Client(api_key= st.secrets["GEMINI_API_KEY"])
 
 vendor_categories = {
     "SA Imports": ["Rasheeda Industries", "L&K Poly"],
