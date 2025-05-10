@@ -81,9 +81,9 @@ receipt_schema = {
 # ---------- Statement Parsing ----------
 def extract_statement(pdf_path):
     filepath = pathlib.Path(pdf_path)
-    prompt =  """Analyze the text in the provided document. Extract all readable content
+    prompt = """Analyze the statement in the provided document. Extract all readable content
             and present it in a structured Markdown format that is clear, concise, 
-            and well-organized. Use headings, lists, or tables where appropriate."""
+            and well-organized. Use headings, lists, or tables where appropriate. EXTRACT ALL CONTENT."""
     response = genai_client.models.generate_content(
     model="gemini-2.0-flash",
     contents=[
