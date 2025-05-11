@@ -8,7 +8,7 @@ from utils.helpers import (
     uploaded_zip_to_tempfile,
     unzip_and_process,
     reconcile_with_statement,
-    split_and_export
+    export_combined_results
 )
 
 if check_auth():
@@ -63,23 +63,13 @@ if check_auth():
                             reconciled = reconcile_with_statement(info, bank_md)
                             results_bank.append(json.loads(reconciled))
 
-        cc_path = split_and_export(results_cc, "cc")
-        bank_path = split_and_export(results_bank, "bank")
-
-        if cc_path:
-            with open(cc_path, "rb") as f:
-                cc_bytes = f.read()
-                st.session_state["cc_bytes"] = cc_bytes
-
-        if bank_path:
-            with open(bank_path, "rb") as f:
-                bank_bytes = f.read()
-                st.session_state["bank_bytes"] = bank_bytes
+        final_path = export_combined_results(results_cc, results_bank)
+        with open(final_path, "rb") as f:
+            final_bytes = f.read()
+            st.session_state["final_recon"] = final_bytes
 
         st.success("✅ Reconciliation complete!")
 
-    if "cc_bytes" in st.session_state:
-        st.download_button("📥 Download Credit Card Reconciled", st.session_state["cc_bytes"], file_name="cc_reconciled.xlsx")
+    if "final_recon" in st.session_state:
+        st.download_button("📥 Download Reconciliation Excel", st.session_state["final_recon"], file_name="reconciliation_results.xlsx")
 
-    if "bank_bytes" in st.session_state:
-        st.download_button("📥 Download Bank Reconciled", st.session_state["bank_bytes"], file_name="bank_reconciled.xlsx")

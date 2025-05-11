@@ -52,17 +52,38 @@ And here is the credit card or bank statement markdown:
     )
     return response.choices[0].message.content
 
-def split_and_export(results, label):
-    matched = [r for r in results if r.get("reconciled") is True]
-    if not matched:
-        return None
-    df = pd.DataFrame(matched)
-    output_path = f"reconciled_{label}.xlsx"
-    df.to_excel(output_path, index=False)
-    wb = load_workbook(output_path)
-    ws = wb.active
-    bold_font = Font(bold=True)
-    for col_num in range(1, len(df.columns) + 1):
-        ws[f"{get_column_letter(col_num)}1"].font = bold_font
-    wb.save(output_path)
+
+def export_combined_results(results_cc, results_bank, output_path="reconciliation_results.xlsx"):
+    matched, unmatched = [], []
+
+    for entry in results_cc:
+        entry["source"] = "credit card"
+        if entry.get("reconciled") is True:
+            matched.append(entry)
+        else:
+            unmatched.append(entry)
+
+    for entry in results_bank:
+        entry["source"] = "bank"
+        if entry.get("reconciled") is True:
+            matched.append(entry)
+        else:
+            unmatched.append(entry)
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        if matched:
+            matched_df = pd.DataFrame(matched)
+            matched_df.to_excel(writer, sheet_name="Matched", index=False)
+            ws = writer.sheets["Matched"]
+            for col_num, column_title in enumerate(matched_df.columns, 1):
+                ws[f"{get_column_letter(col_num)}1"].font = Font(bold=True)
+
+        if unmatched:
+            unmatched_df = pd.DataFrame(unmatched)
+            unmatched_df.to_excel(writer, sheet_name="Unmatched", index=False)
+            ws = writer.sheets["Unmatched"]
+            for col_num, column_title in enumerate(unmatched_df.columns, 1):
+                ws[f"{get_column_letter(col_num)}1"].font = Font(bold=True)
+
     return output_path
+
