@@ -87,18 +87,3 @@ def export_combined_results(results_cc, results_bank, output_path="reconciliatio
 
     return output_path
 
-
-def split_and_export(results, label):
-    matched = [r for r in results if r.get("reconciled") is True]
-    if not matched:
-        return None
-    df = pd.DataFrame(matched)
-    output_path = f"reconciled_{label}.xlsx"
-    df.to_excel(output_path, index=False)
-    wb = load_workbook(output_path)
-    ws = wb.active
-    bold_font = Font(bold=True)
-    for col_num in range(1, len(df.columns) + 1):
-        ws[f"{get_column_letter(col_num)}1"].font = bold_font
-    wb.save(output_path)
-    return output_path

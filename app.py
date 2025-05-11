@@ -8,7 +8,6 @@ from utils.helpers import (
     uploaded_zip_to_tempfile,
     unzip_and_process,
     reconcile_with_statement,
-    split_and_export,
     export_combined_results
 )
 
