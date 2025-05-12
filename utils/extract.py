@@ -1,46 +1,9 @@
-import streamlit as st
 import pathlib
 import base64
-from openai import OpenAI
 from pdf2image import convert_from_path
-from google import genai
+from config.settings import (openai_client, genai_client, 
+                             vendor_categories, receipt_schema)
 from google.genai.types import Part
-from dotenv import load_dotenv
-
-load_dotenv()
-openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-genai_client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-
-vendor_categories = {
-    "SA Imports": ["Rasheeda Industries", "L&K Poly"],
-    "Clearing, FF, Duties, W/housing": ["Shuttle Freight"],
-    "Meat": ["St Helens", "Sargent Farms", "Toronto Halal", "Sysco", "Solmaz", "Bacha Casings", "J&FC Seafood"],
-    "Local Purchases": ["Sysco", "A1", "Bun Man", "Sahel Khan", "Starsky", "Mr Produce", "Walmart", "PIX Graphics", "Kim Eco Pak"],
-    "Utilities": ["Alectra", "Enbridge", "Rogers", "Telus"],
-    "Rent": ["SDEB"],
-    "Repairs & Maintenance": ["MechArm", "IB Technical", "Just instruments", "Willy Oosthuizen", "Skypole"],
-    "Office Expenses": ["Amazon"],
-    "Health & Safety": ["Green Planet", "Abell Pest Control", "Cintas", "CFIA", "HMA", "Waste Connection of Canada", "Aqua Team Power Clean"],
-    "Insurance, Legal, Accounting": ["Des Jardin", "HHAcc Services"],
-    "Bank charges": ["RBC", "Moneris"],
-    "Delivery service": ["Uber Eats", "Door Dash"],
-    "Freight on line shopping": ["Click ship (Freight.com)"],
-    "Vehicle & Fuel": ["Nissan", "Stinton", "Shell"],
-    "Consulting": ["Food safety first"]
-}
-
-receipt_schema = {
-    "type": "object",
-    "properties": {
-        "vendor_name": {"type": "string"},
-        "total_amount": {"type": "string"},
-        "tax_total": {"type": "string"},
-        "date": {"type": "string"},
-        "category": {"type": "string"}
-    },
-    "required": ["vendor_name", "total_amount", "tax_total", "date", "category"],
-    "additionalProperties": False
-}
 
 def extract_statement(pdf_path):
     filepath = pathlib.Path(pdf_path)

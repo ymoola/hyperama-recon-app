@@ -1,63 +1,12 @@
 import pathlib
 import glob
 import pandas as pd
-import streamlit as st
-from typing import Optional
-from dotenv import load_dotenv
-from pydantic import BaseModel
+from config.settings import genai_client, COLUMN_GROUPS, SalesReport
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
-from google import genai
 from google.genai.types import Part
 
-
-# Load environment and Gemini client
-load_dotenv()
-client = genai.Client(api_key= st.secrets["GEMINI_API_KEY"])
-
-# === Column Definitions ===
-COLUMN_GROUPS = {
-    "RETAIL SUPERMARKET & BUTCHERY": [
-        "ODOO POS Sales", "Credit Card Sales", "Account Sales - E-Transfer",
-        "Cash Sales", "Actual Cash", "Short / Over",
-        "Account Sales - Aslam/Ayesha", "Account Sales - Product Write-Off"
-    ],
-    "DINER": [
-        "DINER ODOO POS Sales", "DINER Credit Card Sales", "DINER Account Sales - E-Transfer",
-        "Uber", "DINER Cash Sales", "DINER Actual Cash", "DINER Short / Over",
-        "Staff Meal", "DINER Account Sales - Aslam/Ayesha", "Tip"
-    ],
-    "SHOPIFY": ["Shopify Sales", "Shopify Refunds"],
-    "SALES SUMMARY": ["Total Sales", "Total Cash Sales"]
-}
-
-# === Pydantic Schema ===
-class SalesReport(BaseModel):
-    Date: str
-    ODOO_POS_Sales: float
-    Credit_Card_Sales: float
-    Account_Sales_E_Transfer: float
-    Cash_Sales: float
-    Actual_Cash: float
-    Short_Over: float
-    Account_Sales_Aslam_Ayesha: float
-    Account_Sales_Product_Write_Off: float
-    Shopify_Sales: float
-    Shopify_Refunds: float
-    DINER_ODOO_POS_Sales: float
-    DINER_Credit_Card_Sales: float
-    DINER_Account_Sales_E_Transfer: float
-    Uber: float
-    DINER_Cash_Sales: float
-    DINER_Actual_Cash: float
-    DINER_Short_Over: float
-    Staff_Meal: float
-    DINER_Account_Sales_Aslam_Ayesha: float
-    Tip: float
-    Total_Sales: float
-    Total_Cash_Sales: float
-    Notes: Optional[str]
 
 PROMPT = """
 Extract the daily sales report from this PDF. 
@@ -66,7 +15,7 @@ For "Notes", summarize any note-related cells and include the associated column 
 """
 
 def extract_sales_data(pdf_path: str) -> dict:
-    response = client.models.generate_content(
+    response = genai_client.models.generate_content(
         model="gemini-2.0-flash",
         contents=[
             Part.from_bytes(data=pathlib.Path(pdf_path).read_bytes(), mime_type='application/pdf'),

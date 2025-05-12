@@ -1,12 +1,10 @@
 import tempfile
 import zipfile
 import pandas as pd
+from config.settings import openai_client
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font
-from openai import OpenAI
-import streamlit as st
 
-openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def uploaded_pdf_to_tempfile(uploaded_file):
     suffix = ".pdf"
