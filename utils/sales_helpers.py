@@ -6,20 +6,15 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from google.genai.types import Part
+from utils.prompts import sales_extraction_prompt
 
-
-PROMPT = """
-Extract the daily sales report from this PDF. 
-Make sure the "Date" field is in DD-MM-YYYY format.
-For "Notes", summarize any note-related cells and include the associated column names (if available). If no notes, set it as an empty string.
-"""
 
 def extract_sales_data(pdf_path: str) -> dict:
     response = genai_client.models.generate_content(
         model="gemini-2.0-flash",
         contents=[
             Part.from_bytes(data=pathlib.Path(pdf_path).read_bytes(), mime_type='application/pdf'),
-            PROMPT
+            sales_extraction_prompt
         ],
         config={
             "response_mime_type": "application/json",

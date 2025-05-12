@@ -4,6 +4,7 @@ import pandas as pd
 from config.settings import openai_client
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font
+from utils.prompts import reconciliation_prompt
 
 
 def uploaded_pdf_to_tempfile(uploaded_file):
@@ -25,21 +26,7 @@ def unzip_and_process(zip_file):
     return temp_dir
 
 def reconcile_with_statement(invoice_json, statement_md):
-    prompt = f"""
-- You are an invoice reconciler agent. You will be given a json of an invoice and your job is to reconcile the invoice with the credit card or bank statement.
-- If the invoice is found in the statement, append to the input json with the following key value pair: "reconciled": true
-- If the invoice is not found in the statement, append to the input json with the following key value pair: "reconciled": false
-- Do not wrap output in ```json ```
-
-Here is the invoice:
----
-{invoice_json}
----
-And here is the credit card or bank statement markdown:
----
-{statement_md}
----
-"""
+    prompt = reconciliation_prompt.format(invoice_json, statement_md)
     response = openai_client.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
