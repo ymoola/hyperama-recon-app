@@ -32,7 +32,7 @@ Generate a **monthly sales summary** from daily sales PDF reports:
 - Upload a ZIP folder of daily sales reports
 - Extracted data is structured and categorized
 - Excel output includes:
-  - Grouped headers (e.g., DINER, RETAIL, SHOPIFY)
+  - Grouped headers
   - Sorted by date
   - Styled for easy readability
 
