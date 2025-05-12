@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10.13-blue.svg)](https://www.python.org/downloads/release/python-31013/)
 [![Streamlit](https://img.shields.io/badge/Made%20with-Streamlit-ff4b4b.svg)](https://streamlit.io/)
 [![OpenAI GPT-4o](https://img.shields.io/badge/Powered%20by-GPT--4o-10a37f.svg)](https://openai.com/)
-[![Gemini Flash](https://img.shields.io/badge/AI-Gemini%201.5%20Flash-4285F4.svg)](https://deepmind.google/technologies/gemini/)
+[![Gemini Flash](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-4285F4.svg)](https://deepmind.google/technologies/gemini/)
 [![Deployed](https://img.shields.io/badge/Live%20App-Streamlit%20Cloud-brightgreen.svg)](https://hyperama-recon.streamlit.app)
 
 Welcome to the **Hyperama Reconciliation & Reporting App** — a powerful, AI-driven tool built to automate and simplify your invoice matching and sales report generation workflows.
