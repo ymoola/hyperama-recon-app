@@ -1,52 +1,14 @@
-import streamlit as st
 import pathlib
 import base64
-from openai import OpenAI
 from pdf2image import convert_from_path
-from google import genai
+from config.settings import (openai_client, genai_client, 
+                             vendor_categories, receipt_schema)
 from google.genai.types import Part
-from dotenv import load_dotenv
-
-load_dotenv()
-openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-genai_client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-
-vendor_categories = {
-    "SA Imports": ["Rasheeda Industries", "L&K Poly"],
-    "Clearing, FF, Duties, W/housing": ["Shuttle Freight"],
-    "Meat": ["St Helens", "Sargent Farms", "Toronto Halal", "Sysco", "Solmaz", "Bacha Casings", "J&FC Seafood"],
-    "Local Purchases": ["Sysco", "A1", "Bun Man", "Sahel Khan", "Starsky", "Mr Produce", "Walmart", "PIX Graphics", "Kim Eco Pak"],
-    "Utilities": ["Alectra", "Enbridge", "Rogers", "Telus"],
-    "Rent": ["SDEB"],
-    "Repairs & Maintenance": ["MechArm", "IB Technical", "Just instruments", "Willy Oosthuizen", "Skypole"],
-    "Office Expenses": ["Amazon"],
-    "Health & Safety": ["Green Planet", "Abell Pest Control", "Cintas", "CFIA", "HMA", "Waste Connection of Canada", "Aqua Team Power Clean"],
-    "Insurance, Legal, Accounting": ["Des Jardin", "HHAcc Services"],
-    "Bank charges": ["RBC", "Moneris"],
-    "Delivery service": ["Uber Eats", "Door Dash"],
-    "Freight on line shopping": ["Click ship (Freight.com)"],
-    "Vehicle & Fuel": ["Nissan", "Stinton", "Shell"],
-    "Consulting": ["Food safety first"]
-}
-
-receipt_schema = {
-    "type": "object",
-    "properties": {
-        "vendor_name": {"type": "string"},
-        "total_amount": {"type": "string"},
-        "tax_total": {"type": "string"},
-        "date": {"type": "string"},
-        "category": {"type": "string"}
-    },
-    "required": ["vendor_name", "total_amount", "tax_total", "date", "category"],
-    "additionalProperties": False
-}
+from utils.prompts import statement_extraction_prompt, invoice_extraction_prompt
 
 def extract_statement(pdf_path):
     filepath = pathlib.Path(pdf_path)
-    prompt = """Analyze the statement in the provided document. Extract all readable content
-            and present it in a structured Markdown format that is clear, concise, 
-            and well-organized. Use headings, lists, or tables where appropriate. EXTRACT ALL CONTENT."""
+    prompt = statement_extraction_prompt
     response = genai_client.models.generate_content(
         model="gemini-2.0-flash",
         contents=[
@@ -72,19 +34,10 @@ def pdf_to_base64_images(pdf_path):
 
 def extract_invoice_info(pdf_path):
     base64_images = pdf_to_base64_images(pdf_path)
+    prompt = invoice_extraction_prompt.format(vendor_categories)
     message_content = [{
         "type": "text",
-        "text": (
-            f"""You're a receipt parser. The following images are pages from one receipt. Extract the vendor name, total amount, tax total/hst and date from the receipt image. 
-            Return in JSON format.If Total amount is 0.00, extract subtotal and add on any tax and save it under Total. Always format date in MM/DD/YYYY format.
-            Do not wrap output in ```json ```  
-            
-            Here are the vendor categories:
-            {vendor_categories}
-            
-            Please assign the receipt to one of the above categories based on the vendor name and add this to the json return.
-            """
-        )
+        "text": prompt
     }]
     for b64_img in base64_images:
         message_content.append({
