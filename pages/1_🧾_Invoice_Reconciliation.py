@@ -11,6 +11,20 @@ from utils.helpers import (
     export_combined_results
 )
 
+
+
+def process_invoice_folder(zip_file, statement_markdown):
+    results = []
+    folder_path = unzip_and_process(uploaded_zip_to_tempfile(zip_file))
+    for file in glob.glob(folder_path + '/*'):
+        for f in glob.glob(file + '/*'):
+            if f.endswith(".pdf"):
+                info = extract_invoice_info(f)
+                reconciled = reconcile_with_statement(info, statement_markdown)
+                results.append(json.loads(reconciled))
+    return results
+
+
 st.set_page_config(page_title="Invoice Reconciliation", layout="centered")
 st.title("📁 Invoice Reconciliation")
 
@@ -40,28 +54,8 @@ if st.button("🔄 Run Reconciliation") and cc_pdf and cc_zip and bank_zip and b
         except Exception as e:
             st.error(f"Error extracting bank statement: {e}")
 
-    cc_folder = unzip_and_process(uploaded_zip_to_tempfile(cc_zip))
-    bank_folder = unzip_and_process(uploaded_zip_to_tempfile(bank_zip))
-
-    results_cc, results_bank = [], []
-
-    if cc_md:
-        with st.spinner("🤖 Processing Credit Card invoices..."):
-            for file in glob.glob(cc_folder + '/*'):
-                for f in glob.glob(file + '/*'):
-                    if f.endswith(".pdf"):
-                        info = extract_invoice_info(f)
-                        reconciled = reconcile_with_statement(info, cc_md)
-                        results_cc.append(json.loads(reconciled))
-
-    if bank_md:
-        with st.spinner("🤖 Processing Bank invoices..."):
-            for file in glob.glob(bank_folder + '/*'):
-                for f in glob.glob(file + '/*'):
-                    if f.endswith(".pdf"):
-                        info = extract_invoice_info(f)
-                        reconciled = reconcile_with_statement(info, bank_md)
-                        results_bank.append(json.loads(reconciled))
+    results_cc = process_invoice_folder(cc_zip, cc_md) if cc_md else []
+    results_bank = process_invoice_folder(bank_zip, bank_md) if bank_md else []
 
     final_path = export_combined_results(results_cc, results_bank)
     with open(final_path, "rb") as f:

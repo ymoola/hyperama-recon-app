@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Welcome", layout="centered")
 
-st.title("Hyperama Financial Assistant")
+st.title("🇿🇦 Hyperama Financial Assistant")
 st.markdown(
     """
 Welcome to the **Hyperama Financial Assistant**.
