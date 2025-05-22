@@ -62,26 +62,31 @@ COLUMN_GROUPS = {
 # === Pydantic Schema ===
 class SalesReport(BaseModel):
     Date: str
-    ODOO_POS_Sales: float
-    Credit_Card_Sales: float
-    Account_Sales_E_Transfer: float
-    Cash_Sales: float
-    Actual_Cash: float
-    Short_Over: float
-    Account_Sales_Aslam_Ayesha: float
-    Account_Sales_Product_Write_Off: float
+
+    Retail_ODOO_POS_Sales: float
+    Retail_Credit_Card_Sales: float
+    Retail_Account_Sales_E_Transfer: float
+    Retail_Cash_Sales: float
+    Retail_Actual_Cash: float
+    Retail_Short_Over: float
+    Retail_Account_Sales_Aslam_Ayesha: float
+    Retail_Account_Sales_Product_Write_Off: float
+
+    Diner_ODOO_POS_Sales: float
+    Diner_Credit_Card_Sales: float
+    Diner_Account_Sales_E_Transfer: float
+    Diner_Uber: float
+    Diner_Cash_Sales: float
+    Diner_Actual_Cash: float
+    Diner_Short_Over: float
+    Diner_Staff_Meal: float
+    Diner_Account_Sales_Aslam_Ayesha: float
+    Diner_Tip: float
+
     Shopify_Sales: float
     Shopify_Refunds: float
-    DINER_ODOO_POS_Sales: float
-    DINER_Credit_Card_Sales: float
-    DINER_Account_Sales_E_Transfer: float
-    Uber: float
-    DINER_Cash_Sales: float
-    DINER_Actual_Cash: float
-    DINER_Short_Over: float
-    Staff_Meal: float
-    DINER_Account_Sales_Aslam_Ayesha: float
-    Tip: float
+
     Total_Sales: float
     Total_Cash_Sales: float
+
     Notes: Optional[str]

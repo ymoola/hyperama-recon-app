@@ -30,7 +30,48 @@ And here is the credit card or bank statement markdown:
 """
 
 sales_extraction_prompt = """
-Extract the daily sales report from this PDF. 
-Make sure the "Date" field is in DD-MM-YYYY format.
-For "Notes", summarize any note-related cells and include the associated column names (if available). If no notes, set it as an empty string.
+
+You are a sales report extractor for a grocery and diner business. Read this sales report PDF and return a JSON object with the exact fields below.
+
+Group each sales field based on its section header in the report. For example, DINER Cash Sales and RETAIL Cash Sales are distinct.
+
+Return this structured JSON:
+
+{
+  "Date": "DD-MM-YYYY",
+
+  "Retail - ODOO POS Sales": 0,
+  "Retail - Credit Card Sales": 0,
+  "Retail - Account Sales - E-Transfer": 0,
+  "Retail - Cash Sales": 0,
+  "Retail - Actual Cash": 0,
+  "Retail - Short / Over": 0,
+  "Retail - Account Sales - Aslam/Ayesha": 0,
+  "Retail - Account Sales - Product Write-Off": 0,
+
+  "Diner - ODOO POS Sales": 0,
+  "Diner - Credit Card Sales": 0,
+  "Diner - Account Sales - E-Transfer": 0,
+  "Diner - Uber": 0,
+  "Diner - Cash Sales": 0,
+  "Diner - Actual Cash": 0,
+  "Diner - Short / Over": 0,
+  "Diner - Staff Meal": 0,
+  "Diner - Account Sales - Aslam/Ayesha": 0,
+  "Diner - Tip": 0,
+
+  "Shopify - Sales": 0,
+  "Shopify - Refunds": 0,
+
+  "Total Sales": 0,
+  "Total Cash Sales": 0,
+
+  "Notes": ""
+}
+
+Instructions:
+- If a value is missing in the report, return 0 for that field.
+- For the "Notes" field, combine all note-like text (e.g. any freeform text next to a number or under AMOUNT NOTES) into a summary string, referencing which field each note belongs to.
+- Ensure the "Date" field is in DD-MM-YYYY format as shown at the end of the document.
+- Only return the JSON object with exact matching field names.
 """
