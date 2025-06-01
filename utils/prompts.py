@@ -33,7 +33,9 @@ sales_extraction_prompt = """
 
 You are a sales report extractor for a grocery and diner business. Read this sales report PDF and return a JSON object with the exact fields below.
 
-Group each sales field based on its section header in the report. For example, DINER Cash Sales and RETAIL Cash Sales are distinct.
+Group each sales field based on its section header in the report. 
+
+For example, DINER Cash Sales and RETAIL Cash Sales are distinct. Similarly Retail - Account Sales - E-Transfer and Diner - Account Sales - E-Transfer are distinct .
 
 Return this structured JSON:
 
@@ -72,6 +74,6 @@ Return this structured JSON:
 Instructions:
 - If a value is missing in the report, return 0 for that field.
 - For the "Notes" field, combine all note-like text (e.g. any freeform text next to a number or under AMOUNT NOTES) into a summary string, referencing which field each note belongs to.
-- Ensure the "Date" field is in DD-MM-YYYY format as shown at the end of the document.
+- Ensure the "Date" field is in DD-MM-YYYY format.
 - Only return the JSON object with exact matching field names.
 """

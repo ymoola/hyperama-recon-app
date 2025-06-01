@@ -1,7 +1,9 @@
 import pathlib
 import glob
 import pandas as pd
-from config.settings import genai_client, COLUMN_GROUPS, SalesReport
+import time
+from collections import deque
+from config.settings import genai_client, openai_client, COLUMN_GROUPS, SalesReport
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -9,9 +11,33 @@ from google.genai.types import Part
 from utils.prompts import sales_extraction_prompt
 
 
+
+# Tracks timestamps of API calls
+request_timestamps = deque()
+
+# Rate limit constants
+MAX_REQUESTS_PER_MIN = 9
+WINDOW_SECONDS = 60
+
+def enforce_rate_limit():
+    now = time.time()
+    
+    # Remove timestamps older than 60 seconds
+    while request_timestamps and now - request_timestamps[0] > WINDOW_SECONDS:
+        request_timestamps.popleft()
+    
+    if len(request_timestamps) >= MAX_REQUESTS_PER_MIN:
+        sleep_time = WINDOW_SECONDS - (now - request_timestamps[0])
+        print(f"⏳ Rate limit reached. Sleeping for {sleep_time:.1f} seconds...")
+        time.sleep(sleep_time)
+        enforce_rate_limit()  # recheck after sleep
+
+
 def extract_sales_data(pdf_path: str) -> dict:
+    enforce_rate_limit()
+    
     response = genai_client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash-preview-05-20",
         contents=[
             Part.from_bytes(data=pathlib.Path(pdf_path).read_bytes(), mime_type='application/pdf'),
             sales_extraction_prompt
@@ -21,6 +47,8 @@ def extract_sales_data(pdf_path: str) -> dict:
             "response_schema": SalesReport
         }
     )
+    
+    request_timestamps.append(time.time())
     return response.parsed.model_dump()
 
 def write_to_excel_with_categories(df: pd.DataFrame, output_excel: str):
