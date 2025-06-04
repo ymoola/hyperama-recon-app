@@ -55,13 +55,13 @@ if st.button("🔄 Run Reconciliation") and cc_pdf and cc_zip and bank_zip and b
             st.error(f"Error extracting bank statement: {e}")
 
     if cc_md:
-        with st.write("📄 Extracting credit card invoices..."):
+        with st.spinner("📄 Extracting credit card invoices..."):
             results_cc = process_invoice_folder(cc_zip, cc_md) if cc_md else []
     else:
         st.error("Error extracting credit card statement. Please try again.")
 
     if bank_md:
-        with st.write("📄 Extracting bank invoices..."):
+        with st.spinner("📄 Extracting bank invoices..."):
             results_bank = process_invoice_folder(bank_zip, bank_md) if bank_md else []
     else:
         st.error("Error extracting bank statement. Please try again.")
