@@ -58,6 +58,6 @@ def extract_invoice_info(pdf_path):
                 "strict": True
             }
         },
-        max_tokens=500
+        #max_tokens=500
     )
     return response.choices[0].message.content
