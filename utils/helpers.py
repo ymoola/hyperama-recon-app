@@ -28,9 +28,8 @@ def unzip_and_process(zip_file):
 def reconcile_with_statement(invoice_json, statement_md):
     prompt = reconciliation_prompt.format(invoice_json, statement_md)
     response = openai_client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=500
+        model= "gpt-4.1-mini",
+        messages=[{"role": "user", "content": prompt}]
     )
     return response.choices[0].message.content
 
