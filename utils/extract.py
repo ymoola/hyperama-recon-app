@@ -48,7 +48,7 @@ def extract_invoice_info(pdf_path):
         })
 
     response = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="o4-mini",
         messages=[{"role": "user", "content": message_content}],
         response_format={
             "type": "json_schema",
