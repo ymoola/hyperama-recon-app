@@ -48,12 +48,14 @@ COLUMN_GROUPS = {
     "RETAIL SUPERMARKET & BUTCHERY": [
         "ODOO POS Sales", "Credit Card Sales", "Account Sales - E-Transfer",
         "Cash Sales", "Actual Cash", "Short / Over",
-        "Account Sales - Aslam/Ayesha", "Account Sales - Product Write-Off"
+        "Account Sales - Aslam/Ayesha", 
+        "Account Sales - Product Write-Off", "PlanB - Customer Account"
+        
     ],
     "DINER": [
-        "DINER ODOO POS Sales", "DINER Credit Card Sales", "DINER Account Sales - E-Transfer",
-        "Uber", "DINER Cash Sales", "DINER Actual Cash", "DINER Short / Over",
-        "Staff Meal", "DINER Account Sales - Aslam/Ayesha", "Tip"
+        "DINER ODOO POS Sales", "DINER Credit Card Sales", 
+        "Uber", "DINER Cash Sales", "DINER Actual Cash", 
+        "DINER Short / Over", "Tip"
     ],
     "SHOPIFY": ["Shopify Sales", "Shopify Refunds"],
     "SALES SUMMARY": ["Total Sales", "Total Cash Sales"]
@@ -71,16 +73,14 @@ class SalesReport(BaseModel):
     Retail_Short_Over: float
     Retail_Account_Sales_Aslam_Ayesha: float
     Retail_Account_Sales_Product_Write_Off: float
+    Retail_PlanB_Customer_Account: float
 
     Diner_ODOO_POS_Sales: float
     Diner_Credit_Card_Sales: float
-    Diner_Account_Sales_E_Transfer: float
     Diner_Uber: float
     Diner_Cash_Sales: float
     Diner_Actual_Cash: float
     Diner_Short_Over: float
-    Diner_Staff_Meal: float
-    Diner_Account_Sales_Aslam_Ayesha: float
     Diner_Tip: float
 
     Shopify_Sales: float
