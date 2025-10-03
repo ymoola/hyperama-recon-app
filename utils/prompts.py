@@ -72,6 +72,6 @@ Return this structured JSON:
 Instructions:
 - If a value is missing in the report, return 0 for that field.
 - For the "Notes" field, combine all note-like text (e.g. any freeform text next to a number or under AMOUNT NOTES) into a summary string, referencing which field each note belongs to.
-- Ensure the "Date" field is in MM-DD-YYYY format. If unsure what source format is, use your best judgement.
+- Ensure the "Date" field is in DD-MM-YYYY format.
 - Only return the JSON object with exact matching field names.
 """
