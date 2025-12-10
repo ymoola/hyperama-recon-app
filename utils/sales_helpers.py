@@ -37,7 +37,7 @@ def extract_sales_data(pdf_path: str) -> dict:
     enforce_rate_limit()
     
     response = genai_client.models.generate_content(
-        model="gemini-2.5-flash-lite",
+        model="gemma-3-27b-it",
         contents=[
             Part.from_bytes(data=pathlib.Path(pdf_path).read_bytes(), mime_type='application/pdf'),
             sales_extraction_prompt
