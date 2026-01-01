@@ -16,7 +16,7 @@ from utils.prompts import sales_extraction_prompt
 request_timestamps = deque()
 
 # Rate limit constants
-MAX_REQUESTS_PER_MIN = 9
+MAX_REQUESTS_PER_MIN = 100
 WINDOW_SECONDS = 60
 
 def enforce_rate_limit():
