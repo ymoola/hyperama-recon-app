@@ -1,4 +1,4 @@
-# 📊 Hyperama Reconciliation & Reporting App
+# Hyperama Reconciliation & Reporting App
 
 [![Python](https://img.shields.io/badge/Python-3.10.13-blue.svg)](https://www.python.org/downloads/release/python-31013/)
 [![Streamlit](https://img.shields.io/badge/Made%20with-Streamlit-ff4b4b.svg)](https://streamlit.io/)
@@ -8,11 +8,11 @@
 
 Welcome to the **Hyperama Reconciliation & Reporting App** — a powerful, AI-driven tool built to automate and simplify your invoice matching and sales report generation workflows.
 
-🌐 **Live App**: [hyperama-recon.streamlit.app](https://hyperama-recon.streamlit.app)
+**Live App**: [hyperama-recon.streamlit.app](https://hyperama-recon.streamlit.app)
 
 ---
 
-## 🚀 Features
+## Features
 
 ### 1. Invoice Reconciliation
 
@@ -22,8 +22,8 @@ Effortlessly match vendor invoices with your **bank** and **credit card** statem
 - AI parses and categorizes receipts using OpenAI GPT-4o
 - Automatically reconciles matched invoices
 - Downloads an Excel report with:
-  - ✅ Matched invoices
-  - ❌ Unmatched invoices
+  - Matched invoices
+  - Unmatched invoices
   - Categorization & source tagging
 
 ### 2. Sales Report Generation
@@ -38,7 +38,7 @@ Generate a **monthly sales summary** from daily sales PDF reports:
 
 ---
 
-## 🧠 Powered By
+## Powered By
 
 - [OpenAI GPT-4o](https://openai.com)
 - [Google Gemini](https://deepmind.google/technologies/gemini/)
@@ -47,7 +47,7 @@ Generate a **monthly sales summary** from daily sales PDF reports:
 
 ---
 
-## 🔐 Access
+## Access
 
 Only authenticated users can access the reconciliation and reporting services.
 
@@ -55,12 +55,10 @@ Only authenticated users can access the reconciliation and reporting services.
 
 ---
 
-## 📬 Contact
+## Contact
 
 Need help or want to request access?
 
 📧 Email: [ymoola21@gmail.com]
 🌐 Website: hyperama-recon.streamlit.app
 
-
-### Built with ❤️ by Yusuf
