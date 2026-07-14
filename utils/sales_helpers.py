@@ -54,7 +54,6 @@ def extract_sales_data(pdf_path: str) -> dict:
 def write_to_excel_with_categories(df: pd.DataFrame, output_excel: str):
     df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y")
     df.sort_values("Date", inplace=True)
-    df["Date"] = df["Date"].dt.strftime("%d-%m-%Y")
 
     wb = Workbook()
     ws = wb.active
@@ -79,6 +78,11 @@ def write_to_excel_with_categories(df: pd.DataFrame, output_excel: str):
 
     for row in df.itertuples(index=False):
         ws.append(list(row))
+
+    # Keep dates as Excel values so they remain sortable and filterable while
+    # displaying them in a readable long-date format.
+    for row_num in range(3, ws.max_row + 1):
+        ws.cell(row=row_num, column=1).number_format = "dddd, mmmm d, yyyy"
 
     for start_col, end_col, category in merge_ranges:
         ws.merge_cells(f"{get_column_letter(start_col)}1:{get_column_letter(end_col)}1")
