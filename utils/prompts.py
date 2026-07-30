@@ -40,7 +40,7 @@ For example, DINER Cash Sales and RETAIL Cash Sales are distinct. Similarly Reta
 Return this structured JSON:
 
 {
-  "Date": "DD-MM-YYYY",
+  "Date": "YYYY-MM-DD",
 
   "Retail - ODOO POS Sales": 0,
   "Retail - Credit Card Sales": 0,
@@ -72,6 +72,9 @@ Return this structured JSON:
 Instructions:
 - If a value is missing in the report, return 0 for that field.
 - For the "Notes" field, combine all note-like text (e.g. any freeform text next to a number or under AMOUNT NOTES) into a summary string, referencing which field each note belongs to.
-- Ensure the "Date" field is in DD-MM-YYYY format.
+- Return the "Date" field in ISO YYYY-MM-DD format.
+- Resolve the actual calendar date before formatting it. Source dates may use
+  MM/DD/YYYY, so 07/02/2026 means July 2, 2026 and must be returned as
+  2026-07-02, not 2026-02-07.
 - Only return the JSON object with exact matching field names.
 """

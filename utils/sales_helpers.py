@@ -8,6 +8,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from google.genai.types import Part
+from utils.sales_dates import format_long_dates, normalize_monthly_dates
 from utils.prompts import sales_extraction_prompt
 
 
@@ -52,7 +53,7 @@ def extract_sales_data(pdf_path: str) -> dict:
     return response.parsed.model_dump()
 
 def write_to_excel_with_categories(df: pd.DataFrame, output_excel: str):
-    df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y")
+    df["Date"] = normalize_monthly_dates(df["Date"])
     df.sort_values("Date", inplace=True)
 
     wb = Workbook()
@@ -81,8 +82,7 @@ def write_to_excel_with_categories(df: pd.DataFrame, output_excel: str):
 
     # Keep dates as Excel values so they remain sortable and filterable while
     # displaying them in a readable long-date format.
-    for row_num in range(3, ws.max_row + 1):
-        ws.cell(row=row_num, column=1).number_format = "dddd, mmmm d, yyyy"
+    format_long_dates(ws)
 
     for start_col, end_col, category in merge_ranges:
         ws.merge_cells(f"{get_column_letter(start_col)}1:{get_column_letter(end_col)}1")

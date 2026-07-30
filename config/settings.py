@@ -1,5 +1,6 @@
 from google import genai
 from openai import OpenAI
+from datetime import date
 from typing import Optional
 from pydantic import BaseModel
 import streamlit as st
@@ -63,7 +64,7 @@ COLUMN_GROUPS = {
 
 # === Pydantic Schema ===
 class SalesReport(BaseModel):
-    Date: str
+    Date: date
 
     Retail_ODOO_POS_Sales: float
     Retail_Credit_Card_Sales: float
