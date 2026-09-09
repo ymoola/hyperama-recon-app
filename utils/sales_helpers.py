@@ -1,56 +1,124 @@
+import asyncio
+import logging
 import pathlib
-import glob
+import uuid
+
 import pandas as pd
-import time
-from collections import deque
-from config.settings import genai_client, openai_client, COLUMN_GROUPS, SalesReport
+from config.settings import create_genai_client, COLUMN_GROUPS, SalesReport
+from google.genai.types import Part
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
-from google.genai.types import Part
-from utils.sales_dates import format_long_dates, normalize_monthly_dates
+from utils.gemini_limits import (
+    MAX_ATTEMPTS,
+    get_gemini_coordinator,
+    is_retryable,
+    response_tokens,
+    retry_delay,
+)
+from utils.helpers import find_pdfs
 from utils.prompts import sales_extraction_prompt
+from utils.sales_dates import format_long_dates, normalize_monthly_dates
 
 
+LOGGER = logging.getLogger(__name__)
+if not LOGGER.handlers:
+    LOGGER.addHandler(logging.StreamHandler())
+LOGGER.setLevel(logging.INFO)
+LOGGER.propagate = False
 
-# Tracks timestamps of API calls
-request_timestamps = deque()
-
-# Rate limit constants
-MAX_REQUESTS_PER_MIN = 100
-WINDOW_SECONDS = 60
-
-def enforce_rate_limit():
-    now = time.time()
-    
-    # Remove timestamps older than 60 seconds
-    while request_timestamps and now - request_timestamps[0] > WINDOW_SECONDS:
-        request_timestamps.popleft()
-    
-    if len(request_timestamps) >= MAX_REQUESTS_PER_MIN:
-        sleep_time = WINDOW_SECONDS - (now - request_timestamps[0])
-        print(f"⏳ Rate limit reached. Sleeping for {sleep_time:.1f} seconds...")
-        time.sleep(sleep_time)
-        enforce_rate_limit()  # recheck after sleep
+MAX_JOB_CONCURRENCY = 6
 
 
-def extract_sales_data(pdf_path: str) -> dict:
-    enforce_rate_limit()
-    
-    response = genai_client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=[
-            Part.from_bytes(data=pathlib.Path(pdf_path).read_bytes(), mime_type='application/pdf'),
-            sales_extraction_prompt
-        ],
-        config={
-            "response_mime_type": "application/json",
-            "response_schema": SalesReport
-        }
-    )
-    
-    request_timestamps.append(time.time())
-    return response.parsed.model_dump()
+async def extract_sales_data(pdf_path, client, job_id, position, total):
+    coordinator = get_gemini_coordinator()
+    contents = [
+        Part.from_bytes(
+            data=pathlib.Path(pdf_path).read_bytes(), mime_type="application/pdf"
+        ),
+        sales_extraction_prompt,
+    ]
+
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        reservation = await coordinator.wait_for_reservation_async()
+        actual_tokens = None
+        wait = None
+        LOGGER.info(
+            "Sales job %s processing %d/%d: %s (attempt %d/%d)",
+            job_id, position, total, pdf_path, attempt, MAX_ATTEMPTS,
+        )
+        try:
+            response = await client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=contents,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": SalesReport,
+                },
+            )
+            actual_tokens = response_tokens(response)
+            return response.parsed.model_dump()
+        except Exception as error:
+            if attempt == MAX_ATTEMPTS or not is_retryable(error):
+                raise
+            wait = retry_delay(error, attempt)
+            LOGGER.warning(
+                "Sales job %s retrying %s in %.1fs after %s",
+                job_id, pdf_path, wait, error,
+            )
+        finally:
+            coordinator.release(reservation, actual_tokens)
+        await asyncio.sleep(wait)
+
+
+async def _process_sales_files(pdf_files, sales_folder, progress_callback, job_id):
+    rows = []
+    completed = 0
+    semaphore = asyncio.Semaphore(MAX_JOB_CONCURRENCY)
+    base_client = create_genai_client()
+
+    async def process(position, pdf_path):
+        relative_path = str(pdf_path.relative_to(sales_folder))
+        async with semaphore:
+            try:
+                row = await extract_sales_data(
+                    pdf_path, base_client.aio, job_id, position, len(pdf_files)
+                )
+            except Exception as error:
+                LOGGER.error(
+                    "Sales job %s failed %d/%d: %s (%s)",
+                    job_id, position, len(pdf_files), relative_path, error,
+                )
+                return relative_path, "failed", None
+            LOGGER.info(
+                "Sales job %s processed %d/%d: %s",
+                job_id, position, len(pdf_files), relative_path,
+            )
+            return relative_path, "processed", row
+
+    tasks = [
+        asyncio.create_task(process(position, pdf_path))
+        for position, pdf_path in enumerate(pdf_files, start=1)
+    ]
+    try:
+        for task in asyncio.as_completed(tasks):
+            name, status, row = await task
+            completed += 1
+            if row is not None:
+                rows.append(row)
+            if progress_callback:
+                progress_callback(completed, len(pdf_files), name, status)
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            await base_client.aio.aclose()
+        finally:
+            base_client.close()
+    return rows
+
 
 def write_to_excel_with_categories(df: pd.DataFrame, output_excel: str):
     df["Date"] = normalize_monthly_dates(df["Date"])
@@ -112,20 +180,25 @@ def write_to_excel_with_categories(df: pd.DataFrame, output_excel: str):
     wb.save(output_excel)
 
 
-def process_sales_zip(sales_folder: str) -> str:
-    data_rows = []
-    for file in glob.glob(sales_folder + '/*'):
-        for f in glob.glob(file + '/*'):
-            if f.lower().endswith(".pdf"):
-                print(f"📄 Processing: {f}")
-                try:
-                    row = extract_sales_data(f)
-                    data_rows.append(row)
-                except Exception as e:
-                    print(f"❌ Failed to process {f}: {e}")
+def process_sales_zip(sales_folder, output_path, progress_callback=None):
+    sales_folder = pathlib.Path(sales_folder)
+    pdf_files = find_pdfs(sales_folder)
+    if not pdf_files:
+        raise ValueError("No PDF files were found in the ZIP.")
 
-    output_path = "monthly_sales_report.xlsx"
-    if data_rows:
-        df = pd.DataFrame(data_rows)
-        write_to_excel_with_categories(df, output_path)
-    return output_path
+    job_id = uuid.uuid4().hex[:8]
+    LOGGER.info("Sales job %s queued %d PDF(s)", job_id, len(pdf_files))
+    data_rows = asyncio.run(
+        _process_sales_files(pdf_files, sales_folder, progress_callback, job_id)
+    )
+
+    if not data_rows:
+        raise RuntimeError(f"Could not process any of the {len(pdf_files)} PDF files.")
+
+    write_to_excel_with_categories(pd.DataFrame(data_rows), output_path)
+    failed = len(pdf_files) - len(data_rows)
+    LOGGER.info(
+        "Sales job %s complete: %d processed, %d failed",
+        job_id, len(data_rows), failed,
+    )
+    return len(data_rows), failed

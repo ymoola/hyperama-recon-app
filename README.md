@@ -45,6 +45,19 @@ Generate a **monthly sales summary** from daily sales PDF reports:
 - [Streamlit](https://streamlit.io) for UI
 - `pdf2image`, `openpyxl`, `pydantic`, `pandas` for processing
 
+### Gemini rate settings
+
+Set the project quotas shown in Google AI Studio through Streamlit secrets:
+
+```toml
+GEMINI_RPM_LIMIT = 300
+GEMINI_TPM_LIMIT = 2000000
+GEMINI_RATE_HEADROOM = 0.8
+```
+
+The app shares 80% of these limits across all sessions. If they are omitted,
+it uses conservative defaults of 100 RPM and 1,000,000 input TPM.
+
 ---
 
 ## Access
@@ -61,4 +74,3 @@ Need help or want to request access?
 
 📧 Email: [ymoola21@gmail.com]
 🌐 Website: hyperama-recon.streamlit.app
-

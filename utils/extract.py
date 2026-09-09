@@ -1,36 +1,72 @@
-import pathlib
 import base64
+import logging
+import pathlib
+import time
+from io import BytesIO
+
 from pdf2image import convert_from_path
-from config.settings import (openai_client, genai_client, 
-                             vendor_categories, receipt_schema)
 from google.genai.types import Part
+
+from config.settings import (
+    create_genai_client,
+    get_openai_client,
+    receipt_schema,
+    vendor_categories,
+)
+from utils.gemini_limits import (
+    MAX_ATTEMPTS,
+    get_gemini_coordinator,
+    is_retryable,
+    response_tokens,
+    retry_delay,
+)
 from utils.prompts import statement_extraction_prompt, invoice_extraction_prompt
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 def extract_statement(pdf_path):
     filepath = pathlib.Path(pdf_path)
-    prompt = statement_extraction_prompt
-    response = genai_client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=[
-            Part.from_bytes(
-                data=filepath.read_bytes(),
-                mime_type='application/pdf',
-            ),
-            prompt
-        ]
-    )
-    print(response.text)
-    return response.text
+    contents = [
+        Part.from_bytes(data=filepath.read_bytes(), mime_type="application/pdf"),
+        statement_extraction_prompt,
+    ]
+    coordinator = get_gemini_coordinator()
+
+    with create_genai_client() as client:
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            reservation = coordinator.wait_for_reservation()
+            actual_tokens = None
+            wait = None
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.0-flash", contents=contents
+                )
+                actual_tokens = response_tokens(response)
+                return response.text
+            except Exception as error:
+                if attempt == MAX_ATTEMPTS or not is_retryable(error):
+                    raise
+                wait = retry_delay(error, attempt)
+                LOGGER.warning(
+                    "Retrying statement %s in %.1fs after %s",
+                    filepath.name, wait, error,
+                )
+            finally:
+                coordinator.release(reservation, actual_tokens)
+            time.sleep(wait)
+
 
 def pdf_to_base64_images(pdf_path):
     images = convert_from_path(pdf_path, dpi=200)
     base64_images = []
-    for i, image in enumerate(images):
-        temp_path = f"temp_page_{i+1}.jpg"
-        image.save(temp_path, "JPEG")
-        with open(temp_path, "rb") as f:
-            base64_images.append(base64.b64encode(f.read()).decode("utf-8"))
+    for image in images:
+        buffer = BytesIO()
+        image.save(buffer, "JPEG")
+        base64_images.append(base64.b64encode(buffer.getvalue()).decode("utf-8"))
     return base64_images
+
 
 def extract_invoice_info(pdf_path):
     base64_images = pdf_to_base64_images(pdf_path)
@@ -47,8 +83,8 @@ def extract_invoice_info(pdf_path):
             }
         })
 
-    response = openai_client.chat.completions.create(
-        model= "gpt-4.1-mini",
+    response = get_openai_client().chat.completions.create(
+        model="gpt-4.1-mini",
         messages=[{"role": "user", "content": message_content}],
         response_format={
             "type": "json_schema",

@@ -1,28 +1,35 @@
 import streamlit as st
-import glob
-import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 from utils.auth import check_auth
 from utils.extract import extract_statement, extract_invoice_info
 from utils.helpers import (
-    uploaded_pdf_to_tempfile,
-    uploaded_zip_to_tempfile,
-    unzip_and_process,
+    export_combined_results,
+    extract_zip,
+    find_pdfs,
     reconcile_with_statement,
-    export_combined_results
+    save_upload,
 )
 
 
+def process_invoice_folder(folder_path, statement_markdown):
+    pdf_files = find_pdfs(folder_path)
+    if not pdf_files:
+        raise ValueError("No invoice PDFs were found in one of the ZIP files.")
 
-def process_invoice_folder(zip_file, statement_markdown):
     results = []
-    folder_path = unzip_and_process(uploaded_zip_to_tempfile(zip_file))
-    for file in glob.glob(folder_path + '/*'):
-        for f in glob.glob(file + '/*'):
-            if f.endswith(".pdf"):
-                info = extract_invoice_info(f)
-                reconciled = reconcile_with_statement(info, statement_markdown)
-                results.append(json.loads(reconciled))
-    return results
+    failures = 0
+    for pdf_path in pdf_files:
+        try:
+            invoice = extract_invoice_info(str(pdf_path))
+            results.append(reconcile_with_statement(invoice, statement_markdown))
+        except Exception:
+            failures += 1
+
+    if not results:
+        raise RuntimeError(f"Could not process any of the {len(pdf_files)} invoice PDFs.")
+    return results, failures
 
 
 st.set_page_config(page_title="Invoice Reconciliation", layout="centered")
@@ -40,38 +47,46 @@ bank_pdf = st.file_uploader("Upload Bank Statement (PDF)", type="pdf")
 cc_zip = st.file_uploader("Upload Invoices for Credit Card (ZIP)", type="zip")
 bank_zip = st.file_uploader("Upload Invoices for Bank (ZIP)", type="zip")
 
-if st.button("🔄 Run Reconciliation") and cc_pdf and cc_zip and bank_zip and bank_pdf:
-    with st.spinner("🔍 Extracting statements..."):
-        try:
-            credit_path = uploaded_pdf_to_tempfile(cc_pdf)
-            cc_md = extract_statement(credit_path)
-        except Exception as e:
-            st.error(f"Error extracting credit card statement: {e}")
-
-        try:
-            bank_md_path = uploaded_pdf_to_tempfile(bank_pdf)
-            bank_md = extract_statement(bank_md_path)
-        except Exception as e:
-            st.error(f"Error extracting bank statement: {e}")
-
-    if cc_md:
-        with st.spinner("📄 Extracting credit card invoices..."):
-            results_cc = process_invoice_folder(cc_zip, cc_md) if cc_md else []
+if st.button("🔄 Run Reconciliation"):
+    if not all((cc_pdf, bank_pdf, cc_zip, bank_zip)):
+        st.warning("Upload both statements and both invoice ZIP files first.")
     else:
-        st.error("Error extracting credit card statement. Please try again.")
+        st.session_state.pop("final_recon", None)
+        try:
+            with TemporaryDirectory() as workspace:
+                workspace = Path(workspace)
+                credit_path = save_upload(cc_pdf, workspace, "credit-card.pdf")
+                bank_path = save_upload(bank_pdf, workspace, "bank.pdf")
+                cc_archive = save_upload(cc_zip, workspace, "credit-card.zip")
+                bank_archive = save_upload(bank_zip, workspace, "bank.zip")
 
-    if bank_md:
-        with st.spinner("📄 Extracting bank invoices..."):
-            results_bank = process_invoice_folder(bank_zip, bank_md) if bank_md else []
-    else:
-        st.error("Error extracting bank statement. Please try again.")
+                with st.spinner("🔍 Extracting statements..."):
+                    cc_md = extract_statement(credit_path)
+                    bank_md = extract_statement(bank_path)
 
-    final_path = export_combined_results(results_cc, results_bank)
-    with open(final_path, "rb") as f:
-        final_bytes = f.read()
-        st.session_state["final_recon"] = final_bytes
+                cc_folder = extract_zip(cc_archive, workspace / "credit-card-invoices")
+                bank_folder = extract_zip(bank_archive, workspace / "bank-invoices")
+                with st.spinner("📄 Extracting and reconciling invoices..."):
+                    results_cc, failed_cc = process_invoice_folder(cc_folder, cc_md)
+                    results_bank, failed_bank = process_invoice_folder(bank_folder, bank_md)
 
-    st.success("✅ Reconciliation complete!")
+                output_path = export_combined_results(
+                    results_cc,
+                    results_bank,
+                    workspace / "reconciliation_results.xlsx",
+                )
+                st.session_state["final_recon"] = output_path.read_bytes()
+        except Exception as error:
+            st.error(f"Reconciliation failed: {error}")
+        else:
+            failed = failed_cc + failed_bank
+            if failed:
+                st.warning(f"Skipped {failed} invoice PDF(s) that could not be processed.")
+            st.success("✅ Reconciliation complete!")
 
 if "final_recon" in st.session_state:
-    st.download_button("📥 Download Reconciliation Excel", st.session_state["final_recon"], file_name="reconciliation_results.xlsx")
+    st.download_button(
+        "📥 Download Reconciliation Excel",
+        st.session_state["final_recon"],
+        file_name="reconciliation_results.xlsx",
+    )

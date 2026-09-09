@@ -1,7 +1,9 @@
 import streamlit as st
-import pandas as pd
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 from utils.auth import check_auth
-from utils.helpers import unzip_and_process, uploaded_zip_to_tempfile
+from utils.helpers import extract_zip, save_upload
 from utils.sales_helpers import process_sales_zip
 
 st.set_page_config(page_title="Sales Report Generator", layout="centered")
@@ -16,16 +18,40 @@ if st.button("Logout"):
 
 sales_zip = st.file_uploader("Upload ZIP of Sales PDFs", type="zip")
 
-if st.button("🛠 Generate Sales Report") and sales_zip:
-    with st.spinner("📦 Extracting and Processing PDFs..."):
-        sales_folder = unzip_and_process(uploaded_zip_to_tempfile(sales_zip))
-        output_path = process_sales_zip(sales_folder)  
-
-        # Save to session state for persistent download
-        with open(output_path, "rb") as f:
-            st.session_state["sales_report_bytes"] = f.read()
-
-    st.success("✅ Sales Report Ready!")
+if st.button("🛠 Generate Sales Report"):
+    if not sales_zip:
+        st.warning("Upload a ZIP of sales PDFs first.")
+    else:
+        st.session_state.pop("sales_report_bytes", None)
+        progress = st.progress(0, text="Preparing sales PDFs...")
+        try:
+            with st.spinner("📦 Extracting and processing PDFs..."):
+                with TemporaryDirectory() as workspace:
+                    workspace = Path(workspace)
+                    archive = save_upload(sales_zip, workspace, "sales.zip")
+                    sales_folder = extract_zip(archive, workspace / "sales")
+                    output_path = workspace / "monthly_sales_report.xlsx"
+                    processed, failed = process_sales_zip(
+                        sales_folder,
+                        output_path,
+                        lambda current, total, name, status: progress.progress(
+                            current / total,
+                            text=f"Completed {current} of {total}: {name} ({status})",
+                        ),
+                    )
+                    st.session_state["sales_report_bytes"] = output_path.read_bytes()
+        except Exception as error:
+            progress.empty()
+            st.error(f"Sales report generation failed: {error}")
+        else:
+            progress.progress(100, text=f"Completed {processed} sales PDF(s).")
+            if failed:
+                st.warning(f"Processed {processed} PDF(s); skipped {failed}.")
+            st.success("✅ Sales report ready!")
 
 if "sales_report_bytes" in st.session_state:
-    st.download_button("📥 Download Sales Report", st.session_state["sales_report_bytes"], file_name="monthly_sales_report.xlsx")
+    st.download_button(
+        "📥 Download Sales Report",
+        st.session_state["sales_report_bytes"],
+        file_name="monthly_sales_report.xlsx",
+    )

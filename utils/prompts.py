@@ -18,15 +18,6 @@ reconciliation_prompt = """
 - If the invoice is found in the statement, append to the input json with the following key value pair: "reconciled": true
 - If the invoice is not found in the statement, append to the input json with the following key value pair: "reconciled": false
 - Do not wrap output in ```json ```
-
-Here is the invoice:
----
-{}
----
-And here is the credit card or bank statement markdown:
----
-{}
----
 """
 
 sales_extraction_prompt = """

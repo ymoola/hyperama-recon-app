@@ -6,11 +6,25 @@ from pydantic import BaseModel
 import streamlit as st
 
 
-#------ Load environment and Gemini client------
-openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-genai_client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+# ------ API clients ------
+@st.cache_resource
+def get_openai_client():
+    return OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-#------ Vendor Categories ------
+
+def create_genai_client():
+    return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+
+
+def get_gemini_limits():
+    return (
+        int(st.secrets.get("GEMINI_RPM_LIMIT", 100)),
+        int(st.secrets.get("GEMINI_TPM_LIMIT", 1_000_000)),
+        float(st.secrets.get("GEMINI_RATE_HEADROOM", 0.8)),
+    )
+
+
+# ------ Vendor Categories ------
 vendor_categories = {
     "SA Imports": ["Rasheeda Industries", "L&K Poly"],
     "Clearing, FF, Duties, W/housing": ["Shuttle Freight"],
@@ -49,13 +63,13 @@ COLUMN_GROUPS = {
     "RETAIL SUPERMARKET & BUTCHERY": [
         "ODOO POS Sales", "Credit Card Sales", "Account Sales - E-Transfer",
         "Cash Sales", "Actual Cash", "Short / Over",
-        "Account Sales - Aslam/Ayesha", 
+        "Account Sales - Aslam/Ayesha",
         "Account Sales - Product Write-Off", "PlanB - Customer Account"
-        
+
     ],
     "DINER": [
-        "DINER ODOO POS Sales", "DINER Credit Card Sales", 
-        "Uber", "DINER Cash Sales", "DINER Actual Cash", 
+        "DINER ODOO POS Sales", "DINER Credit Card Sales",
+        "Uber", "DINER Cash Sales", "DINER Actual Cash",
         "DINER Short / Over", "Tip"
     ],
     "SHOPIFY": ["Shopify Sales", "Shopify Refunds"],
