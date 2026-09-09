@@ -17,7 +17,7 @@ from utils.gemini_limits import (
     retry_delay,
 )
 from utils.helpers import find_pdfs
-from utils.prompts import sales_extraction_prompt
+from utils.prompts import build_sales_extraction_prompt
 from utils.sales_dates import format_long_dates, normalize_monthly_dates
 
 
@@ -36,7 +36,7 @@ async def extract_sales_data(pdf_path, client, job_id, position, total):
         Part.from_bytes(
             data=pathlib.Path(pdf_path).read_bytes(), mime_type="application/pdf"
         ),
-        sales_extraction_prompt,
+        build_sales_extraction_prompt(),
     ]
 
     for attempt in range(1, MAX_ATTEMPTS + 1):

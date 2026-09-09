@@ -1,3 +1,6 @@
+from datetime import date, timedelta
+
+
 statement_extraction_prompt = """
             Analyze the statement in the provided document. Extract all readable content
             and present it in a structured Markdown format that is clear, concise, 
@@ -20,7 +23,19 @@ reconciliation_prompt = """
 - Do not wrap output in ```json ```
 """
 
-sales_extraction_prompt = """
+def build_sales_extraction_prompt(today=None):
+    today = today or date.today()
+    previous_month = today.replace(day=1) - timedelta(days=1)
+    date_context = (
+        f"Today's date is {today:%Y-%m-%d}. Sales reports are usually generated "
+        f"for the previous month, which is {previous_month:%B %Y}. For example, "
+        f"when that is the expected month, 1/{previous_month.month}/{previous_month.year} "
+        f"is likely 1 {previous_month:%B %Y} (DD/MM), while "
+        f"{previous_month.month}/1/{previous_month.year} is likely "
+        f"{previous_month:%B} 1, {previous_month.year} (MM/DD). Both must be "
+        f"returned as {previous_month:%Y-%m}-01."
+    )
+    return """
 
 You are a sales report extractor for a grocery and diner business. Read this sales report PDF and return a JSON object with the exact fields below.
 
@@ -64,8 +79,16 @@ Instructions:
 - If a value is missing in the report, return 0 for that field.
 - For the "Notes" field, combine all note-like text (e.g. any freeform text next to a number or under AMOUNT NOTES) into a summary string, referencing which field each note belongs to.
 - Return the "Date" field in ISO YYYY-MM-DD format.
+- {date_context}
 - Resolve the actual calendar date before formatting it. Source dates may use
-  MM/DD/YYYY, so 07/02/2026 means July 2, 2026 and must be returned as
-  2026-07-02, not 2026-02-07.
+  DD/MM/YYYY or MM/DD/YYYY; do not assume one format from an ambiguous date alone.
+- First use explicit evidence such as a written month, report period, headings,
+  and unambiguous dates. For example, 13/08 can only be DD/MM, while 08/13 can
+  only be MM/DD. Apply the detected convention consistently throughout the PDF.
+- For dates where both parts are 12 or less, use that evidence to disambiguate.
+  If the document provides no decisive evidence, use the usual previous-month
+  reporting period above as the tie-breaker.
+- Do not force the previous month when the document clearly identifies another
+  reporting month.
 - Only return the JSON object with exact matching field names.
-"""
+""".replace("{date_context}", date_context)
