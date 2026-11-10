@@ -1,9 +1,10 @@
 streamlit
-openai
+openai==2.50.0
+httpx==0.28.1
 pandas
 pillow
 python-dotenv
 pdf2image
-google-genai
+google-genai==2.15.0
 openpyxl
 
